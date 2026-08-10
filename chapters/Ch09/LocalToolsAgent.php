@@ -40,7 +40,26 @@ class LocalToolsAgent extends Agent
     {
         return [
             ...McpConnector::make([
-                'command' => PHP_BINARY,
+                /*
+                 * escapeshellarg() on the command is not optional.
+                 *
+                 * StdioTransport::connect() builds its command line as
+                 *
+                 *     $commandLine = $command;
+                 *     foreach ($args as $arg) {
+                 *         $commandLine .= ' ' . escapeshellarg((string) $arg);
+                 *     }
+                 *
+                 * The *arguments* are escaped; the *command* is not. Any
+                 * interpreter path containing a space is therefore split by the
+                 * shell and the process dies instantly, surfacing only as
+                 * "MCP server process has terminated unexpectedly."
+                 *
+                 * That is the default on macOS with Laravel Herd, whose PHP
+                 * lives under "~/Library/Application Support/...". Verified
+                 * against neuron-ai 3.16.4.
+                 */
+                'command' => \escapeshellarg(PHP_BINARY),
                 'args' => [__DIR__ . '/server/mcp-server.php'],
             ])->tools(),
         ];

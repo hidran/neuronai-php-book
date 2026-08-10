@@ -88,12 +88,40 @@ listings are excerpts of classes that appear in full in the chapters above.
 
 ```bash
 composer check      # php -l, then PHPStan level 8, then PHPUnit
+composer smoke      # actually execute every runnable example
 ```
 
 PHPStan runs against the real vendor tree, so an example that references a
 class, method or named argument the library does not have fails the build.
 That is deliberate: it is the mechanism that keeps this repository honest as
 the framework moves.
+
+`composer smoke` goes further and runs the examples for real:
+
+```
+No model required
+-----------------
+  Ch13 event-driven workflow         ok
+  Ch14 bounded loop + state          ok
+  Ch15 interrupt                     ok
+  Ch15 resume                        ok
+
+Provider required
+-----------------
+  Ch03 chat                          ok
+  Ch05 tool call                     ok
+  Ch06 structured output             ok
+  Ch07 streaming                     ok
+  Ch09 MCP over stdio                ok
+  Ch12 RAG ingest                    ok
+  Ch12 RAG query                     ok
+
+passed 11, failed 0, skipped 0
+```
+
+The four model-free examples run anywhere, including CI. The other seven run
+whenever a provider is reachable and are reported as skipped otherwise, so a
+missing key never turns into a red build.
 
 ---
 
@@ -126,9 +154,18 @@ substantive ones:
   `thread_id`. The library is inconsistent; the book follows it only halfway.
 - **`ToolProperty` has no `nullable` parameter.**
 
-Two upstream bugs are worked around rather than fixed, with comments pointing
-at them: `FileVectorStore` cannot re-index a store that does not exist yet, and
-`Action::feedback()` erases the value it appears to read.
+Three upstream bugs are worked around rather than fixed, with comments pointing
+at them:
+
+- `FileVectorStore::getLine()` calls `fopen()` with no existence check, so
+  `reindexBySource()` — the call Chapter 12 recommends — crashes on a store
+  that has never been written.
+- `Action::feedback()` assigns unconditionally, so calling it as a getter
+  erases the human's feedback and returns null. Read the property instead.
+- `StdioTransport::connect()` escapes the arguments it appends but not the
+  command itself, so any interpreter path containing a space is split by the
+  shell and the MCP server dies instantly. That is the default on macOS with
+  Laravel Herd. See [`Ch09/LocalToolsAgent.php`](chapters/Ch09/LocalToolsAgent.php).
 
 ---
 

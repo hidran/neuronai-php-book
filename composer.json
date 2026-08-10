@@ -43,7 +43,8 @@
         ],
         "lint": "find chapters tests -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null && echo 'php -l: all files parse'",
         "stan": "phpstan analyse --memory-limit=1G",
-        "test": "phpunit"
+        "test": "phpunit",
+        "smoke": "./smoke.sh"
     },
     "config": {
         "sort-packages": true,

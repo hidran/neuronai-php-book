@@ -41,3 +41,9 @@ jobs:
 
       - name: Tests
         run: vendor/bin/phpunit --no-coverage
+
+      # No provider is reachable on a runner, so this exercises the model-free
+      # examples - the workflow graph, the bounded loop, and interrupt/resume -
+      # and reports the rest as skipped rather than failing.
+      - name: Smoke-run the examples
+        run: ./smoke.sh
