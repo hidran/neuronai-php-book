@@ -1,0 +1,9 @@
+parameters:
+    level: 8
+    paths:
+        - chapters
+        - tests
+    bootstrapFiles:
+        - phpstan-bootstrap.php
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: false

@@ -1,0 +1,11 @@
+/vendor/
+/.env
+/.phpunit.cache/
+/storage/
+composer.lock.bak
+.DS_Store
+*.sqlite
+*.db
+/chapters/**/storage/
+/tmp/
+/evaluation-results.json
