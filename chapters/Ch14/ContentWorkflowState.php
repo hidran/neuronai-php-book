@@ -37,6 +37,9 @@ class ContentWorkflowState extends WorkflowState
         return \count($this->revisions);
     }
 
+    // PHP 8.5: #[\NoDiscard] turns a bare `$state->hasReachedLimit();` -
+    // a check whose answer nobody reads - into a warning.
+    #[\NoDiscard]
     public function hasReachedLimit(int $max = 3): bool
     {
         return $this->revisionCount() >= $max;
@@ -44,8 +47,8 @@ class ContentWorkflowState extends WorkflowState
 
     public function lastFeedback(): ?string
     {
-        $last = \end($this->revisions);
-
-        return $last === false ? null : $last['feedback'];
+        // PHP 8.5: array_last() is null on an empty list and, unlike end(),
+        // leaves the array's internal pointer alone.
+        return \array_last($this->revisions)['feedback'] ?? null;
     }
 }

@@ -13,50 +13,55 @@ declare(strict_types=1);
  * It is deliberately dependency-free - it is a fixture, not a framework.
  */
 
-/** @return array<string, mixed> */
-function tool_definitions(): array
-{
-    return [
-        'get_php_version' => [
-            'definition' => [
-                'name' => 'get_php_version',
-                'description' => 'Returns the PHP version running this MCP server.',
-                'inputSchema' => [
-                    'type' => 'object',
-                    'properties' => (object) [],
-                    'required' => [],
-                ],
+/*
+ * PHP 8.5: closures are allowed in constant expressions, so the whole tool
+ * table - handlers included - is a constant rather than a function that
+ * rebuilds it. They must be `static function`; arrow functions are not
+ * allowed there, which is why get_php_version spells out its return.
+ */
+const TOOLS = [
+    'get_php_version' => [
+        'definition' => [
+            'name' => 'get_php_version',
+            'description' => 'Returns the PHP version running this MCP server.',
+            'inputSchema' => [
+                'type' => 'object',
+                // PHP 8.5 also allows casts in constant expressions.
+                'properties' => (object) [],
+                'required' => [],
             ],
-            'handler' => static fn (array $args): string => 'PHP ' . PHP_VERSION,
         ],
-        'get_disk_free' => [
-            'definition' => [
-                'name' => 'get_disk_free',
-                'description' => 'Returns the free disk space, in gigabytes, for a given path.',
-                'inputSchema' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'path' => [
-                            'type' => 'string',
-                            'description' => 'Absolute filesystem path. Defaults to "/".',
-                        ],
+        'handler' => static function (array $args): string {
+            return 'PHP ' . PHP_VERSION;
+        },
+    ],
+    'get_disk_free' => [
+        'definition' => [
+            'name' => 'get_disk_free',
+            'description' => 'Returns the free disk space, in gigabytes, for a given path.',
+            'inputSchema' => [
+                'type' => 'object',
+                'properties' => [
+                    'path' => [
+                        'type' => 'string',
+                        'description' => 'Absolute filesystem path. Defaults to "/".',
                     ],
-                    'required' => [],
                 ],
+                'required' => [],
             ],
-            'handler' => static function (array $args): string {
-                $path = \is_string($args['path'] ?? null) ? $args['path'] : '/';
-                $free = @\disk_free_space($path);
-
-                if ($free === false) {
-                    return "Cannot read disk usage for {$path}.";
-                }
-
-                return \sprintf('%.1f GB free on %s', $free / 1024 ** 3, $path);
-            },
         ],
-    ];
-}
+        'handler' => static function (array $args): string {
+            $path = \is_string($args['path'] ?? null) ? $args['path'] : '/';
+            $free = @\disk_free_space($path);
+
+            if ($free === false) {
+                return "Cannot read disk usage for {$path}.";
+            }
+
+            return \sprintf('%.1f GB free on %s', $free / 1024 ** 3, $path);
+        },
+    ],
+];
 
 function respond(mixed $id, mixed $result): void
 {
@@ -74,7 +79,7 @@ function respondError(mixed $id, int $code, string $message): void
     \flush();
 }
 
-$tools = tool_definitions();
+$tools = TOOLS;
 $stdin = \fopen('php://stdin', 'r');
 
 if ($stdin === false) {
@@ -135,7 +140,8 @@ while (($line = \fgets($stdin)) !== false) {
                 break;
             }
 
-            /** @var callable(array<string, mixed>): string $handler */
+            // No @var needed: the handlers live in a constant, so their
+            // signatures are known statically.
             $handler = $tools[$name]['handler'];
 
             respond($id, [

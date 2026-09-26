@@ -27,7 +27,9 @@ use NeuronBook\Ch03\AssistantAgent;
 $input = \json_decode((string) \file_get_contents('php://input'), true, flags: \JSON_THROW_ON_ERROR);
 
 $messages = $input['messages'];
-$last = $messages === [] ? null : $messages[\array_key_last($messages)];
+
+// PHP 8.5: array_last() returns null for an empty list - no key juggling.
+$last = \array_last($messages);
 
 if (($last['role'] ?? null) !== 'user') {
     \http_response_code(400);

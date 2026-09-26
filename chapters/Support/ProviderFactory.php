@@ -14,6 +14,7 @@ use NeuronAI\Providers\OpenAI\OpenAI;
 use NeuronAI\RAG\Embeddings\EmbeddingsProviderInterface;
 use NeuronAI\RAG\Embeddings\OllamaEmbeddingsProvider;
 use NeuronAI\RAG\Embeddings\OpenAIEmbeddingsProvider;
+use Uri\Rfc3986\Uri;
 
 /**
  * One place that knows how to build a provider.
@@ -27,6 +28,8 @@ use NeuronAI\RAG\Embeddings\OpenAIEmbeddingsProvider;
 final class ProviderFactory
 {
     public const DEFAULT_DRIVER = 'ollama';
+
+    public const DEFAULT_OLLAMA_URL = 'http://localhost:11434/api';
 
     public static function make(?string $driver = null): AIProviderInterface
     {
@@ -50,7 +53,7 @@ final class ProviderFactory
                 model: Env::get('MISTRAL_MODEL', 'mistral-large-latest') ?? '',
             ),
             'ollama' => new Ollama(
-                url: Env::get('OLLAMA_URL', 'http://localhost:11434/api') ?? '',
+                url: self::ollamaUrl()->toString(),
                 model: Env::get('OLLAMA_MODEL', 'llama3.2') ?? '',
             ),
             default => throw new InvalidArgumentException("Unknown provider driver [{$driver}]."),
@@ -68,7 +71,7 @@ final class ProviderFactory
             ),
             default => new OllamaEmbeddingsProvider(
                 model: Env::get('OLLAMA_EMBEDDING_MODEL', 'nomic-embed-text') ?? '',
-                url: Env::get('OLLAMA_URL', 'http://localhost:11434/api') ?? '',
+                url: self::ollamaUrl()->toString(),
             ),
         };
     }
@@ -94,16 +97,26 @@ final class ProviderFactory
      * True when the configured provider can actually be reached right now.
      * The runnable scripts use this to skip with a helpful message instead of
      * dying on a connection error.
+     *
+     * PHP 8.5: #[\NoDiscard] makes a bare `ProviderFactory::isAvailable();`
+     * a warning. The method never throws, so ignoring its answer is always a bug.
      */
+    #[\NoDiscard('isAvailable() does not throw: check the result.')]
     public static function isAvailable(?string $driver = null): bool
     {
         $driver ??= Env::get('NEURON_PROVIDER', self::DEFAULT_DRIVER);
 
         if ($driver === 'ollama') {
-            $url = Env::get('OLLAMA_URL', 'http://localhost:11434/api') ?? '';
-            $context = stream_context_create(['http' => ['timeout' => 2, 'ignore_errors' => true]]);
+            try {
+                $url = self::ollamaUrl();
+            } catch (InvalidArgumentException) {
+                return false;
+            }
 
-            return @file_get_contents(rtrim($url, '/') . '/tags', false, $context) !== false;
+            $tags = $url->withPath(\rtrim($url->getPath(), '/') . '/tags')->toString();
+            $context = \stream_context_create(['http' => ['timeout' => 2, 'ignore_errors' => true]]);
+
+            return @\file_get_contents($tags, false, $context) !== false;
         }
 
         return match ($driver) {
@@ -113,5 +126,25 @@ final class ProviderFactory
             'mistral' => Env::has('MISTRAL_API_KEY'),
             default => false,
         };
+    }
+
+    /**
+     * OLLAMA_URL as a parsed, validated URI.
+     *
+     * PHP 8.5: the built-in URI extension parses per RFC 3986, so a malformed
+     * value fails here with its name in the message instead of surfacing later
+     * as an opaque cURL error. withPath() then builds /api/tags without string
+     * surgery on slashes.
+     */
+    private static function ollamaUrl(): Uri
+    {
+        $raw = Env::get('OLLAMA_URL', self::DEFAULT_OLLAMA_URL) ?? '';
+        $url = Uri::parse($raw);
+
+        if ($url?->getHost() === null) {
+            throw new InvalidArgumentException("OLLAMA_URL [{$raw}] is not an absolute URL.");
+        }
+
+        return $url;
     }
 }

@@ -19,6 +19,9 @@ use NeuronAI\Workflow\Interrupt\WaitForEventRequest;
  *   and the first read of it is a fatal error;
  * - the wire shape (metadata()) carries a version, so the UI and the resume
  *   payload can tell which form they are dealing with.
+ *
+ * PHP 8.5: the promoted properties are final, so a subclass cannot redeclare
+ * the fields metadata() puts on the wire.
  */
 class RefundApprovalRequest extends WaitForEventRequest
 {
@@ -31,12 +34,26 @@ class RefundApprovalRequest extends WaitForEventRequest
     protected string $currency = 'EUR';
 
     public function __construct(
-        protected string $message,
-        protected int $orderId,
-        protected float $amount,
+        final protected string $message,
+        final protected int $orderId,
+        final protected float $amount,
         ?DateTimeImmutable $expiresAt = null,
     ) {
         parent::__construct(self::EVENT, $expiresAt);
+    }
+
+    /**
+     * The version-2 field is set with a wither, in the style of the
+     * framework's own withId(): the constructor - and every call site written
+     * for version 1 - stays as it was.
+     *
+     * PHP 8.5: clone() takes the properties to change, and #[\NoDiscard]
+     * warns if the caller drops the copy and keeps the unchanged original.
+     */
+    #[\NoDiscard('withCurrency() returns a copy; the original request is unchanged.')]
+    public function withCurrency(string $currency): static
+    {
+        return clone($this, ['currency' => $currency]);
     }
 
     public function getMessage(): string

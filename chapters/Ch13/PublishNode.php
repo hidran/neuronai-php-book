@@ -19,8 +19,13 @@ use RuntimeException;
  */
 class PublishNode extends Node
 {
-    /** Stands in for a flaky HTTP endpoint: the first call fails. */
-    public static int $publishCalls = 0;
+    /**
+     * Stands in for a flaky HTTP endpoint: the first call fails.
+     *
+     * PHP 8.5: asymmetric visibility on a static property - anyone may read
+     * the counter, only this node may change it.
+     */
+    public private(set) static int $publishCalls = 0;
 
     public function __invoke(ResearchDone $event, WorkflowState $state): StopEvent
     {

@@ -70,7 +70,8 @@ $invoice = InvoiceAgent::make()->structured(
 );
 
 // Section 8.5 - the model transcribes; your code checks the arithmetic.
-$computed = \array_sum(\array_map(static fn (object $l): float => $l->line_total, $invoice->lines));
+// PHP 8.5: the pipe reads in order - take the line totals, then add them up.
+$computed = \array_column($invoice->lines, 'line_total') |> \array_sum(...);
 
 if (\abs($computed - $invoice->subtotal) > 0.01) {
     \fwrite(STDERR, \sprintf(

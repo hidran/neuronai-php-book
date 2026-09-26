@@ -12,6 +12,7 @@ use NeuronAI\Tools\PropertyType;
 use NeuronAI\Tools\Tool;
 use NeuronAI\Tools\ToolOutput;
 use NeuronAI\Tools\ToolProperty;
+use Uri\WhatWg\Url;
 
 /**
  * Lab 3 - the capstone tool.
@@ -26,6 +27,8 @@ use NeuronAI\Tools\ToolProperty;
  */
 class WeatherTool extends Tool
 {
+    private const BASE_URL = 'https://api.open-meteo.com/v1/';
+
     protected string $name = 'get_current_weather';
 
     protected ?string $description = 'Returns current weather conditions for a geographic location: temperature '
@@ -61,12 +64,18 @@ class WeatherTool extends Tool
 
     public function __invoke(float $latitude, float $longitude): string|ToolOutput
     {
+        // PHP 8.5: the pipe operator reads top to bottom - the parameters
+        // become a query string, and the query string becomes the request.
+        $request = [
+            'latitude'  => $latitude,
+            'longitude' => $longitude,
+            'current'   => 'temperature_2m,wind_speed_10m,weather_code',
+        ]
+            |> \http_build_query(...)
+            |> (static fn (string $query): HttpRequest => HttpRequest::get("forecast?{$query}"));
+
         try {
-            $data = $this->getClient()->request(HttpRequest::get('forecast?' . \http_build_query([
-                'latitude'  => $latitude,
-                'longitude' => $longitude,
-                'current'   => 'temperature_2m,wind_speed_10m,weather_code',
-            ])))->json();
+            $data = $this->getClient()->request($request)->json();
         } catch (HttpException) {
             return ToolOutput::error(
                 'The weather service is unreachable right now. Do not retry; '
@@ -83,7 +92,9 @@ class WeatherTool extends Tool
 
     protected function getClient(): HttpClientInterface
     {
+        // PHP 8.5: Uri\WhatWg\Url parses the endpoint the way a browser would,
+        // so a malformed base URL fails here rather than on the first request.
         return $this->client ??= (new CurlHttpClient(timeout: 10.0))
-            ->withBaseUri('https://api.open-meteo.com/v1/');
+            ->withBaseUri(new Url(self::BASE_URL)->toAsciiString());
     }
 }

@@ -10,7 +10,13 @@ libraries. Nothing in this repository is a snippet that was never run.
 |---|---|
 | `neuron-core/neuron-ai` | 4.x (`df30064`, shortly before 4.0.0) |
 | `neuron-core/neuron-laravel` | 2.x (`399936c`) |
-| PHP | 8.2 – 8.5 |
+| PHP | 8.5 (8.5.4) |
+
+PHP 8.5 is the minimum. The examples use what it added where it makes the
+code clearer — the pipe operator, `clone()` with properties, `#[\NoDiscard]`,
+`array_first()` / `array_last()`, closures and casts in constant expressions,
+`final` promoted properties, asymmetric visibility on static properties and
+the built-in URI extension — so no earlier version can parse them.
 
 `neuron-core/php-vector` has no v4-compatible release yet, so the PHPVector
 listings in Chapter 12 are not part of the verified set.
@@ -84,6 +90,14 @@ are executed directly and are not autoloaded.
 | 21 — Streaming to the Frontend | [`Ch21`](chapters/Ch21) | `run/sse-frames.php`, `run/channel.php`, `run/disconnect.php` |
 | 22 — Workflows and Human Approval in Production | [`Ch22`](chapters/Ch22) | `run/refund.php` — fenced resume, deadlines, retained completion; `run/agent-approval.php` |
 | 23 — Production | [`Ch23`](chapters/Ch23) | `run/usage.php` — token usage from PSR-14 events |
+
+### Beyond the chapters
+
+The book's worked capstone - an agentic trip planner that chooses a
+destination from real weather data, finds flights and a hotel, and books them
+with a human decision at every step, as a CLI and as a Laravel + React web app
+- lives in its own repository:
+[**hidran/neuron-trip-planner**](https://github.com/hidran/neuron-trip-planner).
 
 Chapters 1, 2 and 11 are conceptual. The Laravel chapters 17 to 20 depend on
 application models (`App\Models\*`), so their listings were verified with
@@ -181,6 +195,14 @@ Upstream defects worked around here, each with a comment pointing at it:
   the day it is fixed, the build says so.
 - `subscribe()` types its listener as `callable(object): void`, so typed
   listeners need a PHPStan ignore. See [`Ch10/run/listeners.php`](chapters/Ch10/run/listeners.php).
+
+One engine bug, in PHP itself rather than the framework:
+
+- Inside a namespace, piping into an **unqualified** internal function —
+  `$s |> trim(...)` — corrupts the heap on PHP 8.5.4 (`zend_mm_heap
+  corrupted`). Write `|> \trim(...)`; closures, arrow functions and
+  `Class::method(...)` are unaffected. `tests/BookExamplesTest.php` scans the
+  repository for the unsafe form.
 
 Fixed in v4, and removed from this repository: the `FileVectorStore` crash on
 a store that had never been written, and the `Action::feedback()` method that
