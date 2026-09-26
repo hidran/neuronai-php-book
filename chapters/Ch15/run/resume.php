@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/../../../bootstrap.php';
 
-use NeuronAI\Workflow\Interrupt\Action;
-use NeuronAI\Workflow\Interrupt\ApprovalRequest;
+use NeuronAI\Exceptions\WorkflowException;
 use NeuronAI\Workflow\Persistence\FilePersistence;
 use NeuronBook\Ch15\PublishWorkflow;
 
@@ -14,37 +13,41 @@ use NeuronBook\Ch15\PublishWorkflow;
  *
  *   php chapters/Ch15/run/resume.php <workflow-id> [approve|reject]
  *
- * The second constructor argument is the resume token. Pass the same workflow
- * ID you were handed at interruption and the graph picks up exactly where it
- * stopped - the checkpoint above the interrupt is NOT re-executed.
+ * Three things must match the run that suspended: the workflow class (so the
+ * graph is identical), the persistence backend, and the workflow ID. The
+ * decision itself is a plain array - no request object to rebuild. The
+ * memoized proposal above the interrupt is NOT regenerated.
  */
 
-$id = $argv[1] ?? null;
+$workflowId = $argv[1] ?? null;
 $decision = $argv[2] ?? 'approve';
 
-if ($id === null) {
+if ($workflowId === null) {
     \fwrite(STDERR, "Usage: php chapters/Ch15/run/resume.php <workflow-id> [approve|reject]\n");
     exit(1);
 }
 
 $storage = \dirname(__DIR__, 3) . '/storage/workflows';
 
-$action = new Action('delete_file', 'Delete File', 'Delete /var/log/old.txt');
+$payload = [
+    'delete_file' => $decision === 'approve'
+        ? 'approve'
+        : ['reject', 'Keep it until the audit closes.'],
+];
 
-if ($decision === 'approve') {
-    $action->approve('Confirmed by the on-call engineer.');
-} else {
-    $action->reject('Keep it until the audit closes.');
+try {
+    $state = PublishWorkflow::make(workflowId: $workflowId)
+        ->setPersistence(new FilePersistence($storage))
+        ->resume($payload)
+        ->run();
+} catch (WorkflowException $e) {
+    // A finished run cleans up after itself, so resuming it twice - or
+    // resuming an ID that never paused - lands here: "No run in flight".
+    \fwrite(STDERR, $e->getMessage() . "\n");
+    exit(1);
 }
 
-$request = new ApprovalRequest(
-    message: 'Should I continue?',
-    actions: [$action],
-);
-
-$workflow = new PublishWorkflow(new FilePersistence($storage), $id);
-
-$state = $workflow->init($request)->run();
+@\unlink($storage . "/pending-{$workflowId}.json");
 
 echo "Resumed and finished.\n";
 echo '  proposal : ' . \var_export($state->get('proposal'), true) . "\n";

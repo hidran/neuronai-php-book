@@ -51,7 +51,7 @@ final class ProviderFactory
             ),
             'ollama' => new Ollama(
                 url: Env::get('OLLAMA_URL', 'http://localhost:11434/api') ?? '',
-                model: Env::get('OLLAMA_MODEL', 'qwen3.5:27b') ?? '',
+                model: Env::get('OLLAMA_MODEL', 'llama3.2') ?? '',
             ),
             default => throw new InvalidArgumentException("Unknown provider driver [{$driver}]."),
         };
@@ -84,9 +84,8 @@ final class ProviderFactory
 
         return match ($driver) {
             'anthropic' => 185_000,
-            'openai' => 118_000,
+            'openai', 'mistral' => 118_000,
             'gemini' => 920_000,
-            'mistral' => 118_000,
             default => 29_000,
         };
     }

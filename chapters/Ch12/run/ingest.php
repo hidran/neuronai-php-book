@@ -19,7 +19,9 @@ use NeuronBook\Support\ProviderFactory;
  *
  * reindexBySource() rather than addDocuments(): re-running this should replace
  * what was there, not append a second copy of every chunk. That is what the
- * sourceName metadata is for.
+ * sourceName metadata is for. It is safe as the very first call, too:
+ * FileVectorStore creates an empty store file in its constructor, so the
+ * delete-then-add inside reindexBySource() has something to read.
  */
 
 if (!ProviderFactory::isAvailable()) {
@@ -31,26 +33,6 @@ $documents = FileDataLoader::for(__DIR__ . '/../docs')
     ->getDocuments();
 
 \printf("Loaded %d chunk(s).\n", \count($documents));
-
-/*
- * Bug in neuron-ai 3.16.4, worth knowing about before it bites you.
- *
- * reindexBySource() calls FileVectorStore::deleteBy(), which streams the store
- * through FileVectorStore::getLine(). getLine() calls fopen() with no
- * existence check, so on a store that has never been written the fopen returns
- * false and fclose(false) throws a TypeError:
- *
- *   TypeError: fclose(): Argument #1 ($stream) must be of type resource,
- *   false given in .../RAG/VectorStore/FileVectorStore.php:161
- *
- * In other words the recommended re-indexing call cannot be the *first* call
- * you make. Creating the empty store file first is enough to satisfy it.
- */
-$storeFile = \dirname(__DIR__, 3) . '/storage/docs.store';
-
-if (!\is_file($storeFile)) {
-    \touch($storeFile);
-}
 
 DocsAgent::make()->reindexBySource($documents);
 

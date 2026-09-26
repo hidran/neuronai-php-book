@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 require __DIR__ . '/../../../bootstrap.php';
 
+use NeuronAI\Chat\Messages\Stream\Chunks\TextChunk;
 use NeuronAI\Chat\Messages\UserMessage;
 use NeuronBook\Ch03\AssistantAgent;
 use NeuronBook\Support\ProviderFactory;
 
 /*
- * Section 7.2 - stream() and events().
+ * Section 7.2 - stream() is the generator.
  *
- * The v3 shape that Chapter 7 insists on: stream() returns a handler, and you
- * iterate handler->events(). The chunk is an object; the text lives in
- * $chunk->content, not in the chunk itself.
+ * You iterate what stream() returns directly. It yields objects, not strings:
+ * keep the TextChunk instances and read $chunk->content. When the loop ends,
+ * the generator's return value is the final AgentState.
  *
  *   php chapters/Ch07/run/stream.php "Explain the Repository pattern"
  */
@@ -27,9 +28,16 @@ $prompt = $argv[1] ?? 'Explain the Repository pattern and when using it is a mis
 $start = \microtime(true);
 $first = null;
 
-$handler = AssistantAgent::make()->stream(new UserMessage($prompt));
+$stream = AssistantAgent::make()->stream(new UserMessage($prompt));
 
-foreach ($handler->events() as $chunk) {
+// No adapter and no channel attached, so stream() returned a Generator.
+\assert($stream instanceof Generator);
+
+foreach ($stream as $chunk) {
+    if (!$chunk instanceof TextChunk) {
+        continue;
+    }
+
     $first ??= \microtime(true);
 
     echo $chunk->content;
@@ -43,3 +51,8 @@ $end = \microtime(true);
     ($first ?? $end) - $start,
     $end - $start,
 );
+
+// The complete assistant message, assembled for you.
+$message = $stream->getReturn()->getMessage();
+
+\printf("[assembled: %d characters]\n", \strlen($message?->getContent() ?? ''));

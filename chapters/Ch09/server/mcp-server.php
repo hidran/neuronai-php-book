@@ -101,8 +101,10 @@ while (($line = \fgets($stdin)) !== false) {
 
     switch ($method) {
         case 'initialize':
+            // The revision this fixture speaks. NeuronAI 4 announces 2025-11-25
+            // and forwards whatever version the server settles on to its transport.
             respond($id, [
-                'protocolVersion' => '2024-11-05',
+                'protocolVersion' => '2025-11-25',
                 'capabilities' => ['tools' => (object) []],
                 'serverInfo' => ['name' => 'neuronai-book-demo', 'version' => '1.0.0'],
             ]);

@@ -21,7 +21,9 @@ if (!ProviderFactory::isAvailable()) {
 
 $question = $argv[1] ?? 'Why does changing the embeddings model force a re-index?';
 
+// chat() returns the final AgentState. getMessage() is null only when the
+// run paused before any inference (a tool awaiting approval, for instance).
 echo DocsAgent::make()
     ->chat(new UserMessage($question))
     ->getMessage()
-    ->getContent() . PHP_EOL;
+    ?->getContent() . PHP_EOL;

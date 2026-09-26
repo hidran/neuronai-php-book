@@ -48,7 +48,10 @@ class AssistantAgent extends Agent
 
     protected function chatHistory(): ChatHistoryInterface
     {
+        // Pass the agent's thread: an InMemoryChatHistory built without one
+        // keys itself at random, which then conflicts with make(threadId: ...).
         return new InMemoryChatHistory(
+            threadId: $this->threadId,
             contextWindow: ProviderFactory::contextWindow(),
         );
     }

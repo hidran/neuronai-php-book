@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/../../../bootstrap.php';
 
+use NeuronAI\Chat\Enums\MediaType;
 use NeuronAI\Chat\Enums\SourceType;
 use NeuronAI\Chat\Messages\ContentBlocks\FileContent;
 use NeuronAI\Chat\Messages\UserMessage;
@@ -16,8 +17,9 @@ use NeuronBook\Ch08\InvoiceAgent;
  *   php chapters/Ch08/run/extract-invoice.php /path/to/invoice.pdf
  *
  * Needs a provider that accepts documents: Anthropic, OpenAI or Gemini.
- * Local Ollama text models cannot read a PDF, so set NEURON_PROVIDER
- * accordingly before running this one.
+ * The Ollama mapper sends text and base64 images only - a FileContent block
+ * is dropped from the request, and the model would answer without ever
+ * seeing the invoice. Set NEURON_PROVIDER accordingly before running this.
  *
  * NOTE: SourceType lives in NeuronAI\Chat\Enums - it is easy to miss because
  * the content-block classes it is used with live in a different namespace.
@@ -44,7 +46,8 @@ $message->addContent(
     new FileContent(
         content: \base64_encode($bytes),
         sourceType: SourceType::BASE64,
-        mediaType: 'application/pdf',
+        mediaType: MediaType::PDF,
+        filename: \basename($path),
     )
 );
 

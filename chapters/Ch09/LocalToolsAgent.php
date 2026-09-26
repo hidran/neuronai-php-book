@@ -56,8 +56,8 @@ class LocalToolsAgent extends Agent
                  * "MCP server process has terminated unexpectedly."
                  *
                  * That is the default on macOS with Laravel Herd, whose PHP
-                 * lives under "~/Library/Application Support/...". Verified
-                 * against neuron-ai 3.16.4.
+                 * lives under "~/Library/Application Support/...". Still true
+                 * in neuron-ai 4.x.
                  */
                 'command' => \escapeshellarg(PHP_BINARY),
                 'args' => [__DIR__ . '/server/mcp-server.php'],

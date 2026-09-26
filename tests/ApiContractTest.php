@@ -43,6 +43,26 @@ final class ApiContractTest extends TestCase
             'ConsoleOutput, not ConsoleDriver' => [ConsoleOutput::class],
             'JsonOutput, not JsonDriver' => [JsonOutput::class],
             'SourceType lives under Chat\Enums' => [SourceType::class],
+            // v4 locations the book prints (chapters 5, 7, 10, 12, 15, 21-23)
+            'ApprovalRequest moved to Agent\Interrupt' => [\NeuronAI\Agent\Interrupt\ApprovalRequest::class],
+            'ToolRunsExceededException is the only run-limit exception' => [\NeuronAI\Exceptions\ToolRunsExceededException::class],
+            'RunInFlightException' => [\NeuronAI\Exceptions\RunInFlightException::class],
+            'StaleWorkflowRunException' => [\NeuronAI\Exceptions\StaleWorkflowRunException::class],
+            'ToolOutput' => [\NeuronAI\Tools\ToolOutput::class],
+            'TrackByInputs' => [\NeuronAI\Tools\TrackByInputs::class],
+            'EvaluateTool replaces the per-operation calculator tools' => [\NeuronAI\Tools\Toolkits\Calculator\EvaluateTool::class],
+            'Stream adapters live under Agent\Adapters' => [\NeuronAI\Agent\Adapters\AGUIAdapter::class],
+            'VercelAIAdapter' => [\NeuronAI\Agent\Adapters\VercelAIAdapter::class],
+            'SSE framing happens at the edge' => [\NeuronAI\Workflow\Streaming\SSEEncoder::class],
+            'Streaming channels' => [\NeuronAI\Workflow\Streaming\Channel\PusherChannel::class],
+            'CurlHttpClient is the default HTTP client' => [\NeuronAI\HttpClient\Curl\CurlHttpClient::class],
+            'DocumentSchema' => [\NeuronAI\RAG\Schema\DocumentSchema::class],
+            'SearchRequest' => [\NeuronAI\RAG\VectorStore\SearchRequest::class],
+            'Filter' => [\NeuronAI\RAG\VectorStore\Filter\Filter::class],
+            'FakeAIProvider' => [\NeuronAI\Testing\FakeAIProvider::class],
+            'LogListener' => [\NeuronAI\Observability\LogListener::class],
+            'EloquentPersistence' => [\NeuronAI\Workflow\Persistence\EloquentPersistence::class],
+            'Laravel WorkflowStore model' => [\NeuronAI\Laravel\Models\WorkflowStore::class],
         ];
     }
 
@@ -53,7 +73,7 @@ final class ApiContractTest extends TestCase
     public function testClassExistsWhereTheBookSaysItDoes(string $fqcn): void
     {
         self::assertTrue(
-            class_exists($fqcn) || interface_exists($fqcn) || enum_exists($fqcn),
+            class_exists($fqcn) || interface_exists($fqcn) || enum_exists($fqcn) || trait_exists($fqcn),
             "{$fqcn} no longer exists.",
         );
     }
@@ -66,20 +86,21 @@ final class ApiContractTest extends TestCase
         self::assertNotContains('source', $names, 'FileContent must not accept $source.');
     }
 
-    public function testToolPropertyHasNoNullableParameter(): void
+    public function testToolPropertyAcceptsNullable(): void
     {
         $names = self::parameterNames(ToolProperty::class);
 
-        self::assertSame(['name', 'type', 'description', 'required', 'enum'], $names);
+        self::assertSame(['name', 'type', 'description', 'required', 'enum', 'nullable'], $names);
     }
 
     /**
-     * The library really is inconsistent here, and the book trips on it.
+     * v3 used thread_id for SQLChatHistory and threadId for Eloquent; v4
+     * settled on threadId for both, and the book now relies on that.
      */
-    public function testChatHistoryThreadParameterNamingDiffers(): void
+    public function testChatHistoriesAgreeOnThreadId(): void
     {
         self::assertContains('threadId', self::parameterNames(EloquentChatHistory::class));
-        self::assertContains('thread_id', self::parameterNames(SQLChatHistory::class));
+        self::assertContains('threadId', self::parameterNames(SQLChatHistory::class));
     }
 
     /**
@@ -100,7 +121,7 @@ final class ApiContractTest extends TestCase
     {
         $rc = new ReflectionClass(\NeuronAI\Workflow\Node::class);
 
-        foreach (['checkpoint', 'interrupt', 'interruptIf', 'consumeResumeRequest'] as $method) {
+        foreach (['checkpoint', 'memoize', 'interrupt', 'interruptIf', 'awaitEvent', 'sleepUntil'] as $method) {
             self::assertTrue($rc->hasMethod($method), "Node::{$method}() is gone.");
             self::assertTrue($rc->getMethod($method)->isProtected(), "Node::{$method}() changed visibility.");
         }
@@ -122,13 +143,15 @@ final class ApiContractTest extends TestCase
     }
 
     /**
-     * The book's whole tool chapter assumes these fluent setters return $this.
+     * v4 made Tool abstract: every tool in the book is a subclass.
      */
-    public function testToolFluentSettersExist(): void
+    public function testToolIsAbstractAndKeepsItsFluentSetters(): void
     {
         $rc = new ReflectionClass(\NeuronAI\Tools\Tool::class);
 
-        foreach (['addProperty', 'setCallable', 'setMaxRuns', 'visible'] as $method) {
+        self::assertTrue($rc->isAbstract(), 'Tool is no longer abstract.');
+
+        foreach (['addProperty', 'setMaxRuns', 'visible', 'requireApproval', 'suppressApproval', 'withApprovalPolicy'] as $method) {
             self::assertTrue($rc->hasMethod($method), "Tool::{$method}() is gone.");
         }
     }
@@ -149,6 +172,91 @@ final class ApiContractTest extends TestCase
             class_exists(\NeuronAI\RAG\Embeddings\OpenAIEmbeddingsProvider::class),
             'It is OpenAIEmbeddingsProvider - not OpenAIEmbeddings, not OpenAIEmbeddingProvider.',
         );
+    }
+
+    /**
+     * Chapter 5.5: binding is casting. The v3 advice to widen float parameters
+     * to float|int|string is obsolete because this conversion happens first.
+     */
+    public function testNumberPropertyCastsNumericStrings(): void
+    {
+        $property = new ToolProperty('x', \NeuronAI\Tools\PropertyType::NUMBER);
+
+        self::assertSame(45.07, $property->cast('45.07'));
+        self::assertSame(5, $property->cast('5'));
+    }
+
+    /**
+     * Chapter 5.10 and Appendix A item 45: approvalPolicy() takes no arguments.
+     */
+    public function testApprovalPolicyTakesNoParameters(): void
+    {
+        $method = (new ReflectionClass(\NeuronAI\Tools\Tool::class))->getMethod('approvalPolicy');
+
+        self::assertTrue($method->isProtected());
+        self::assertSame(0, $method->getNumberOfParameters());
+    }
+
+    /**
+     * Chapters 5, 15 and 22 build on these agent verbs.
+     */
+    public function testAgentApprovalAndIdentityVerbsExist(): void
+    {
+        $rc = new ReflectionClass(\NeuronAI\Agent\Agent::class);
+
+        foreach (['pendingApprovals', 'submitApprovalDecisions', 'resetConversation', 'abandonRun', 'getThreadId'] as $method) {
+            self::assertTrue($rc->hasMethod($method), "Agent::{$method}() is gone.");
+        }
+    }
+
+    /**
+     * Chapter 4.3: v4 settled on (pdo, threadId) - the v3 book had thread_id first.
+     */
+    public function testSqlChatHistoryArgumentOrder(): void
+    {
+        self::assertSame(['pdo', 'threadId', 'table', 'contextWindow'], self::parameterNames(SQLChatHistory::class));
+    }
+
+    /**
+     * Chapters 13 and 15: no persistence or resume token in the constructor any more.
+     */
+    public function testWorkflowConstructorAndResumeFences(): void
+    {
+        self::assertSame(['workflowId', 'state'], self::parameterNames(\NeuronAI\Workflow\Workflow::class));
+
+        $resume = (new ReflectionClass(\NeuronAI\Workflow\Workflow::class))->getMethod('resume');
+        $names = array_map(static fn (\ReflectionParameter $p): string => $p->getName(), $resume->getParameters());
+
+        self::assertContains('expectedRunId', $names);
+        self::assertContains('expectedExecutionAttempt', $names);
+    }
+
+    /**
+     * Chapter 12.5 and the glossary: five methods, search/delete take value objects.
+     */
+    public function testVectorStoreInterfaceShape(): void
+    {
+        $methods = array_map(
+            static fn (\ReflectionMethod $m): string => $m->getName(),
+            (new ReflectionClass(\NeuronAI\RAG\VectorStore\VectorStoreInterface::class))->getMethods(),
+        );
+        sort($methods);
+
+        self::assertSame(['addDocument', 'addDocuments', 'delete', 'getSchema', 'search'], $methods);
+    }
+
+    /**
+     * Appendix A item 74 / Section 22.3 document that the stale-attempt fence
+     * throws a plain WorkflowException. When this starts failing, upstream has
+     * aligned the two fences: update the callout in 22.3 and the appendix.
+     */
+    public function testStaleAttemptFenceStillThrowsPlainWorkflowException(): void
+    {
+        $source = (string) file_get_contents(
+            (string) (new ReflectionClass(\NeuronAI\Workflow\Executor\WorkflowExecutor::class))->getFileName(),
+        );
+
+        self::assertStringContainsString("Stale continuation for workflow ID", $source);
     }
 
     /**

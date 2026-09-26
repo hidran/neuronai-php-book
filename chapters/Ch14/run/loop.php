@@ -10,26 +10,21 @@ use NeuronBook\Ch14\ReviewNode;
 use NeuronBook\Ch14\WriteNode;
 
 /*
- * Section 14.2 and 14.4 - a bounded loop over a typed state object.
+ * Sections 14.1 and 14.3 - a bounded loop over a typed state object.
  *
  *   php chapters/Ch14/run/loop.php
  *
- * Custom state is supplied through the Workflow constructor's third parameter,
- * not through init(). init() takes only an optional resume request.
+ * The Workflow constructor is (?string $workflowId, ?WorkflowState $state), so
+ * a custom state goes in by name: Workflow::make(state: ...). A Workflow
+ * subclass can instead return it from its state() hook.
  */
 
-$handler = Workflow::make(
-    persistence: null,
-    resumeToken: null,
-    state: new ContentWorkflowState(),
-)
+$state = Workflow::make(state: new ContentWorkflowState())
     ->addNodes([
         new WriteNode(),
         new ReviewNode(),
     ])
-    ->init();
-
-$state = $handler->run();
+    ->run();
 
 echo "\nFinal: " . \var_export($state->get('final'), true) . "\n";
 echo 'Escalated: ' . \var_export($state->get('escalate_reason', 'no'), true) . "\n";

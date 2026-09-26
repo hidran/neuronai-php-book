@@ -20,7 +20,11 @@ class Person
     #[NotBlank]
     public string $name;
 
+    // required: true only shapes the schema sent to the model; it is not
+    // checked on the way back. #[NotBlank] is what makes an omitted key
+    // trigger the retry instead of an uninitialised property.
     #[SchemaProperty(description: 'What the user loves to eat.', required: true)]
+    #[NotBlank]
     public string $preference;
 
     #[SchemaProperty(description: 'The address to complete the delivery.', required: false)]

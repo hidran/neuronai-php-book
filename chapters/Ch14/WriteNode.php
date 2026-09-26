@@ -6,14 +6,11 @@ namespace NeuronBook\Ch14;
 
 use NeuronAI\Workflow\Events\StartEvent;
 use NeuronAI\Workflow\Node;
-use NeuronAI\Workflow\WorkflowState;
 
 class WriteNode extends Node
 {
-    public function __invoke(StartEvent $event, WorkflowState $state): DraftReady
+    public function __invoke(StartEvent $event, ContentWorkflowState $state): DraftReady
     {
-        \assert($state instanceof ContentWorkflowState);
-
         $feedback = $state->lastFeedback();
 
         $draft = $feedback === null

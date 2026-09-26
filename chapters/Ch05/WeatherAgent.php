@@ -7,20 +7,20 @@ namespace NeuronBook\Ch05;
 use NeuronAI\Agent\Agent;
 use NeuronAI\Agent\SystemPrompt;
 use NeuronAI\Providers\AIProviderInterface;
+use NeuronAI\Tools\ToolCall;
+use NeuronAI\Tools\ToolOutput;
 use NeuronAI\Tools\Toolkits\Calculator\CalculatorToolkit;
-use NeuronAI\Tools\Toolkits\Calculator\DivideTool;
+use NeuronAI\Tools\Toolkits\Calculator\EvaluateTool;
 use NeuronAI\Tools\Toolkits\Calculator\MeanTool;
-use NeuronAI\Tools\Toolkits\Calculator\SumTool;
-use NeuronAI\Tools\ToolInterface;
 use NeuronBook\Support\ProviderFactory;
 use Throwable;
 
 /**
- * Section 5.7 - a custom tool and a filtered toolkit in one agent.
+ * Lab 3 - a custom tool and a filtered toolkit in one agent.
  *
- * only() narrows the calculator down to the three operations this agent can
- * justify having, which is the Section 5.4 argument: every extra tool is
- * schema you pay for on every request and a decision the model can get wrong.
+ * only() narrows the calculator down to the two tools this agent can justify
+ * having, which is the Section 5.8 argument: every extra tool is schema you
+ * pay for on every request and a decision the model can get wrong.
  */
 class WeatherAgent extends Agent
 {
@@ -48,7 +48,7 @@ class WeatherAgent extends Agent
     }
 
     /**
-     * @return array<int, ToolInterface|\NeuronAI\Tools\Toolkits\ToolkitInterface>
+     * @return array<int, \NeuronAI\Tools\ToolInterface|\NeuronAI\Tools\Toolkits\ToolkitInterface>
      */
     protected function tools(): array
     {
@@ -56,8 +56,7 @@ class WeatherAgent extends Agent
             WeatherTool::make()->setMaxRuns(4),
 
             CalculatorToolkit::make()->only([
-                SumTool::class,
-                DivideTool::class,
+                EvaluateTool::class,
                 MeanTool::class,
             ]),
         ];
@@ -65,12 +64,13 @@ class WeatherAgent extends Agent
 
     protected function resolveToolErrorHandler(): ?callable
     {
-        return function (Throwable $e, ToolInterface $tool): string {
-            \error_log(\sprintf('[tool:%s] %s: %s', $tool->getName(), $e::class, $e->getMessage()));
+        return function (Throwable $e, ToolCall $call): ToolOutput {
+            \error_log(\sprintf('[tool:%s] %s: %s', $call->getName(), $e::class, $e->getMessage()));
 
-            return "The {$tool->getName()} tool failed: {$e->getMessage()}. "
-                 . 'Do not retry more than once. If it fails again, tell the user '
-                 . 'the data is unavailable.';
+            return ToolOutput::error(
+                "The {$call->getName()} tool failed. Do not retry more than once. "
+                . 'If it fails again, tell the user the data is unavailable.'
+            );
         };
     }
 }

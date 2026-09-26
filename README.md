@@ -8,10 +8,12 @@ libraries. Nothing in this repository is a snippet that was never run.
 
 | Verified against | Version |
 |---|---|
-| `neuron-core/neuron-ai` | 3.16.4 |
-| `neuron-core/neuron-laravel` | 1.3.0 |
-| `neuron-core/php-vector` | 1.1.0 |
+| `neuron-core/neuron-ai` | 4.x (`df30064`, shortly before 4.0.0) |
+| `neuron-core/neuron-laravel` | 2.x (`399936c`) |
 | PHP | 8.2 – 8.5 |
+
+`neuron-core/php-vector` has no v4-compatible release yet, so the PHPVector
+listings in Chapter 12 are not part of the verified set.
 
 ---
 
@@ -68,19 +70,25 @@ are executed directly and are not autoloaded.
 | Chapter | Directory | What runs |
 |---|---|---|
 | 3 — Setup and Your First Agent | [`Ch03`](chapters/Ch03) | `run/chat.php` — a full chat round-trip |
-| 5 — Tools: Giving the Agent Hands | [`Ch05`](chapters/Ch05) | `run/weather.php` — real tool call to Open-Meteo |
+| 4 — Messages and Memory | [`Ch04`](chapters/Ch04) | `run/chat-loop.php` — a thread that survives a restart |
+| 5 — Tools: Giving the Agent Hands | [`Ch05`](chapters/Ch05) | `run/weather.php` — real tool call to Open-Meteo; `run/server-load.php` — inline tool |
 | 6 — Structured Output | [`Ch06`](chapters/Ch06) | `run/extract.php` — typed, validated DTO |
-| 7 — Streaming | [`Ch07`](chapters/Ch07) | `run/stream.php` — token-by-token with timings |
+| 7 — Streaming | [`Ch07`](chapters/Ch07) | `run/stream.php`, `run/stream-tools.php`; `run/agui-endpoint.php` — an AG-UI SSE endpoint |
 | 8 — Attachments and Multimodality | [`Ch08`](chapters/Ch08) | `run/extract-invoice.php` — PDF → typed `Invoice` |
 | 9 — MCP | [`Ch09`](chapters/Ch09) | `run/mcp.php` — agent over a local MCP server |
-| 10 — Observability, Evals and Testing | [`Ch10`](chapters/Ch10) | `vendor/bin/neuron evaluation chapters/Ch10` |
-| 12 — The NeuronAI RAG Pipeline | [`Ch12`](chapters/Ch12) | `run/ingest.php`, `run/ask.php` — local RAG |
-| 13 — The Event-Driven Model | [`Ch13`](chapters/Ch13) | `run/workflow.php` — three-node graph |
+| 10 — Observability, Evals and Testing | [`Ch10`](chapters/Ch10) | `vendor/bin/neuron evaluation chapters/Ch10`; `run/fake-provider.php`, `run/listeners.php` — no model needed |
+| 12 — The NeuronAI RAG Pipeline | [`Ch12`](chapters/Ch12) | `run/ingest.php`, `run/ask.php` — local RAG; `run/isolation.php` — tenant-filtered search |
+| 13 — The Event-Driven Model | [`Ch13`](chapters/Ch13) | `run/workflow.php` — three-node graph; `run/durable.php` — crash recovery with durable steps |
 | 14 — Loops, Branches and State | [`Ch14`](chapters/Ch14) | `run/loop.php` — bounded loop, typed state |
-| 15 — Human in the Loop | [`Ch15`](chapters/Ch15) | `run/start.php` + `run/resume.php` — interrupt and resume |
+| 15 — Human in the Loop | [`Ch15`](chapters/Ch15) | `run/start.php` + `run/resume.php` — pause in one process, resume in another |
+| 21 — Streaming to the Frontend | [`Ch21`](chapters/Ch21) | `run/sse-frames.php`, `run/channel.php`, `run/disconnect.php` |
+| 22 — Workflows and Human Approval in Production | [`Ch22`](chapters/Ch22) | `run/refund.php` — fenced resume, deadlines, retained completion; `run/agent-approval.php` |
+| 23 — Production | [`Ch23`](chapters/Ch23) | `run/usage.php` — token usage from PSR-14 events |
 
-Chapters 1, 2, 4 and 11 are conceptual and carry no standalone code; their
-listings are excerpts of classes that appear in full in the chapters above.
+Chapters 1, 2 and 11 are conceptual. The Laravel chapters 17 to 20 depend on
+application models (`App\Models\*`), so their listings were verified with
+PHPStan against stub classes rather than shipped here; chapters 21 to 23 ship
+the framework-level parts that run without Laravel.
 
 ---
 
@@ -101,71 +109,82 @@ the framework moves.
 ```
 No model required
 -----------------
+  Ch10 fake provider (Lab 7)         ok
+  Ch10 event listeners               ok
   Ch13 event-driven workflow         ok
+  Ch13 durable steps + memoize       ok
   Ch14 bounded loop + state          ok
+  Ch21 SSE frames                    ok
+  Ch21 streaming channel             ok
+  Ch21 client disconnect             ok
+  Ch22 refund workflow               ok
+  Ch22 agent tool approval           ok
+  Ch23 usage recorder                ok
   Ch15 interrupt                     ok
   Ch15 resume                        ok
 
 Provider required
 -----------------
   Ch03 chat                          ok
+  Ch04 persistent chat loop          ok
   Ch05 tool call                     ok
+  Ch05 inline tool                   ok
   Ch06 structured output             ok
   Ch07 streaming                     ok
+  Ch07 streaming tool calls          ok
   Ch09 MCP over stdio                ok
   Ch12 RAG ingest                    ok
   Ch12 RAG query                     ok
+  Ch12 tenant isolation              ok
 
-passed 11, failed 0, skipped 0
+passed 24, failed 0, skipped 0
 ```
 
-The four model-free examples run anywhere, including CI. The other seven run
-whenever a provider is reachable and are reported as skipped otherwise, so a
-missing key never turns into a red build.
+The model-free examples run anywhere, including CI. The rest run whenever a
+provider is reachable and are reported as skipped otherwise, so a missing key
+never turns into a red build.
 
 ---
 
-## Corrections to the first edition
+## What verification found
 
-Verifying these examples turned up defects in the printed book. They are fixed
-here, and each fix carries a comment explaining what was wrong. The
-substantive ones:
+Verifying the book against v4 turned up defects in the printed text, in the
+framework's documentation and in the framework itself. The book is corrected;
+Appendix A lists the documentation drift. The ones worth knowing before you
+write any code:
 
-- **`float` tool parameters throw a `TypeError`.** Models emit JSON numbers as
-  strings, and the framework's `Tool.php` — the file that makes the call —
-  declares `strict_types=1`. Since strict mode is decided by the *call site*,
-  your own `declare()` is irrelevant. Widen to `float|int|string` and cast.
-  See [`Ch05/WeatherTool.php`](chapters/Ch05/WeatherTool.php).
-- **Content blocks take `content:`, not `source:`.** `FileContent`,
-  `ImageContent`, `VideoContent` and `AudioContent` all name the first
-  parameter `$content`.
-- **`SourceType` is `NeuronAI\Chat\Enums\SourceType`** — a different namespace
-  from the content blocks it is used with.
-- **Workflow events live in `NeuronAI\Workflow\Events\`** — `StartEvent`,
-  `StopEvent` and `Event` itself. `WorkflowInterrupt` is in
-  `NeuronAI\Workflow\Interrupt\`.
-- **Event payloads must be `public readonly`**, not `protected` — the node that
-  receives the event is a different class.
-- **The eval config is a list, not a class ⇒ options map**, and the classes are
-  `ConsoleOutput` / `JsonOutput`. See [`evaluation.php`](evaluation.php).
-- **The CLI command is `neuron evaluation`, singular.** This settles Appendix
-  A, item 18, which the book leaves open.
-- **`EloquentChatHistory` takes `threadId`**, while `SQLChatHistory` takes
-  `thread_id`. The library is inconsistent; the book follows it only halfway.
-- **`ToolProperty` has no `nullable` parameter.**
+- **Binding is casting.** v4 converts tool inputs to the declared property
+  type before `__invoke()` runs, so `"45.07"` arrives as `45.07` and a value
+  that cannot be converted goes back to the model as an error. The v3 advice to
+  widen `float` parameters to `float|int|string` is obsolete.
+- **`required: true` does not validate.** It shapes the schema the model sees
+  and is not checked on the way back. Pair every required scalar with a rule
+  such as `#[NotBlank]`, or an omitted key becomes an uninitialised-property
+  fatal instead of a retry. See [`Ch06/Person.php`](chapters/Ch06/Person.php).
+- **A pause is a result.** `run()` returns an interrupted state; nothing is
+  thrown. Resume with `resume($payload)->run()`, addressed by workflow ID.
+- **`approvalPolicy()` takes no arguments**, whatever the docs show; the
+  inputs are already bound on the tool.
+- **`SQLChatHistory` and `EloquentChatHistory` now both take `threadId`**, the
+  inconsistency the first edition tripped on.
 
-Three upstream bugs are worked around rather than fixed, with comments pointing
-at them:
+Upstream defects worked around here, each with a comment pointing at it:
 
-- `FileVectorStore::getLine()` calls `fopen()` with no existence check, so
-  `reindexBySource()` — the call Chapter 12 recommends — crashes on a store
-  that has never been written.
-- `Action::feedback()` assigns unconditionally, so calling it as a getter
-  erases the human's feedback and returns null. Read the property instead.
 - `StdioTransport::connect()` escapes the arguments it appends but not the
   command itself, so any interpreter path containing a space is split by the
   shell and the MCP server dies instantly. That is the default on macOS with
   Laravel Herd. See [`Ch09/LocalToolsAgent.php`](chapters/Ch09/LocalToolsAgent.php).
+- The comparison validation rules build retry messages without the field name
+  and with the reference's type instead of its value.
+- The stale-attempt fence on `resume()` throws a plain `WorkflowException`,
+  not `StaleWorkflowRunException`. `tests/ApiContractTest.php` pins this so
+  the day it is fixed, the build says so.
+- `subscribe()` types its listener as `callable(object): void`, so typed
+  listeners need a PHPStan ignore. See [`Ch10/run/listeners.php`](chapters/Ch10/run/listeners.php).
+
+Fixed in v4, and removed from this repository: the `FileVectorStore` crash on
+a store that had never been written, and the `Action::feedback()` method that
+erased the value it was supposed to return.
 
 ---
 

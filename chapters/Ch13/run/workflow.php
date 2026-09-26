@@ -10,22 +10,24 @@ use NeuronBook\Ch13\NodeOne;
 use NeuronBook\Ch13\NodeTwo;
 
 /*
- * Section 13.3 - a three-node workflow.
+ * Section 13.4 - a three-node workflow.
  *
  *   php chapters/Ch13/run/workflow.php
  *
  * No model, no network, no API key. A Workflow is a graph executor; the fact
  * that most of the interesting nodes call an LLM is incidental to the machinery.
+ *
+ * run() is called on the workflow itself and returns the final WorkflowState.
+ * There is no handler object and no init() step in between.
  */
 
-$handler = Workflow::make()
+$state = Workflow::make()
     ->addNodes([
         new InitialNode(),
         new NodeOne(),
         new NodeTwo(),
     ])
-    ->init();
-
-$state = $handler->run();
+    ->run();
 
 echo "\nFinal state: " . \var_export($state->get('answer'), true) . "\n";
+echo 'Status: ' . $state->getStatus()->name . "\n";

@@ -2,6 +2,12 @@
 
 declare(strict_types=1);
 
+// The runner loads this file from the project root before it runs any
+// evaluator, so this is where .env gets loaded. Without it, the evaluators
+// would ignore NEURON_PROVIDER and friends unless every command also passed
+// --autoload-file=bootstrap.php.
+require_once __DIR__ . '/bootstrap.php';
+
 use NeuronAI\Evaluation\Output\ConsoleOutput;
 use NeuronAI\Evaluation\Output\JsonOutput;
 

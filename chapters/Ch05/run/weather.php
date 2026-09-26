@@ -9,7 +9,7 @@ use NeuronBook\Ch05\WeatherAgent;
 use NeuronBook\Support\ProviderFactory;
 
 /*
- * Section 5.7 - the capstone.
+ * Lab 3 - the capstone.
  *
  *   php chapters/Ch05/run/weather.php "What's the average temperature between Turin and Milan?"
  *
@@ -30,7 +30,7 @@ try {
         ->toolMaxRuns(6)
         ->chat(new UserMessage($prompt))
         ->getMessage()
-        ->getContent() . PHP_EOL;
+        ?->getContent() . PHP_EOL;
 
     \printf("\n[%.2fs]\n", \microtime(true) - $start);
 } catch (\Throwable $e) {

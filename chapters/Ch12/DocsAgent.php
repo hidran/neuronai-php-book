@@ -37,14 +37,10 @@ class DocsAgent extends RAG
 
     protected function vectorStore(): VectorStoreInterface
     {
-        $directory = \dirname(__DIR__, 2) . '/storage';
-
-        if (!\is_dir($directory)) {
-            \mkdir($directory, 0o755, true);
-        }
-
+        // FileVectorStore creates the directory and the empty docs.store
+        // file itself when they are missing.
         return new FileVectorStore(
-            directory: $directory,
+            directory: \dirname(__DIR__, 2) . '/storage',
             name: 'docs',
         );
     }
