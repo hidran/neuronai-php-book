@@ -5,6 +5,7 @@ declare(strict_types=1);
 require __DIR__ . '/../../../bootstrap.php';
 
 use NeuronAI\Exceptions\WorkflowException;
+use NeuronAI\Workflow\Executor\ExecutionRequest;
 use NeuronAI\Workflow\Persistence\FilePersistence;
 use NeuronBook\Ch15\PublishWorkflow;
 
@@ -38,8 +39,7 @@ $payload = [
 try {
     $state = PublishWorkflow::make(workflowId: $workflowId)
         ->setPersistence(new FilePersistence($storage))
-        ->resume($payload)
-        ->run();
+        ->run(ExecutionRequest::resume($payload));
 } catch (WorkflowException $e) {
     // A finished run cleans up after itself, so resuming it twice - or
     // resuming an ID that never paused - lands here: "No run in flight".

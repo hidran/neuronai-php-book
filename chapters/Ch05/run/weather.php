@@ -27,6 +27,7 @@ $start = \microtime(true);
 
 try {
     echo WeatherAgent::make()
+        ->setThreadId('weather-demo')
         ->toolMaxRuns(6)
         ->chat(new UserMessage($prompt))
         ->getMessage()

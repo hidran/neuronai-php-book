@@ -15,7 +15,8 @@ use NeuronBook\Ch21\ProgressNode;
  *
  *   php chapters/Ch21/run/channel.php
  *
- * No model needed. With both a stream adapter and a channel attached, run()
+ * No model needed. Both setters take a factory, called once per execution
+ * segment. With both a stream adapter and a channel attached, run()
  * consumes the stream itself and delivers every event to the channel as it
  * is produced - which is what a queue worker does. Each line printed is one
  * envelope, exactly as PusherChannel or RedisChannel would publish it: a
@@ -29,8 +30,8 @@ $state = Workflow::make(
     state: new WorkflowState(['topic' => 'queues']),
 )
     ->addNodes([new ProgressNode()])
-    ->setStreamAdapter(new AgentChunkAdapter())
-    ->setChannel(new EchoChannel(maxBytes: 300))
+    ->setStreamAdapter(fn (): AgentChunkAdapter => new AgentChunkAdapter())
+    ->setChannel(fn (): EchoChannel => new EchoChannel(maxBytes: 300))
     ->run();
 
 echo "\nrun() returned: " . $state->getStatus()->value . ', '

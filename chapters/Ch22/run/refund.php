@@ -6,6 +6,7 @@ require __DIR__ . '/../../../bootstrap.php';
 
 use NeuronAI\Exceptions\RunInFlightException;
 use NeuronAI\Exceptions\StaleWorkflowRunException;
+use NeuronAI\Workflow\Executor\ExecutionRequest;
 use NeuronAI\Workflow\Persistence\FilePersistence;
 use NeuronAI\Workflow\WorkflowState;
 use NeuronBook\Ch22\RefundWorkflow;
@@ -66,20 +67,22 @@ try {
 // The resume job: order ID, decision, and the fences it observed.
 $state = RefundWorkflow::make(orderId: 1002)
     ->setPersistence($persistence)
-    ->resume(
+    ->run(ExecutionRequest::resume(
         ['decision' => 'approve', 'amount' => 350.0],
         expectedRunId: $runId,
         expectedExecutionAttempt: $attempt,
-    )
-    ->run();
+    ));
 $report('fenced resume()', $state);
 
 // The same job delivered twice (a double click, a queue redelivery).
 try {
     RefundWorkflow::make(orderId: 1002)
         ->setPersistence($persistence)
-        ->resume(['decision' => 'approve'], expectedRunId: $runId, expectedExecutionAttempt: $attempt)
-        ->run();
+        ->run(ExecutionRequest::resume(
+            ['decision' => 'approve'],
+            expectedRunId: $runId,
+            expectedExecutionAttempt: $attempt,
+        ));
 } catch (StaleWorkflowRunException $e) {
     echo "  redelivery refused: {$e->getMessage()}\n";
 }
@@ -90,15 +93,14 @@ $state = RefundWorkflow::make(orderId: 1003, requestedAmount: 250.0, approvalWin
     ->run();
 $runId = (string) $state->getRunId();
 
-$state = RefundWorkflow::make(orderId: 1003)->setPersistence($persistence)->resume()->run();
+$state = RefundWorkflow::make(orderId: 1003)->setPersistence($persistence)->run(ExecutionRequest::resume());
 $report('resume() before deadline', $state);
 
 \sleep(2);
 
 $state = RefundWorkflow::make(orderId: 1003)
     ->setPersistence($persistence)
-    ->resume(expectedRunId: $runId)
-    ->run();
+    ->run(ExecutionRequest::resume(expectedRunId: $runId));
 $report('resume() after deadline', $state);
 echo '  feedback: ' . \var_export($state->get('feedback'), true) . "\n";
 
@@ -114,9 +116,8 @@ $report('run() retained', $state);
 $replayed = RefundWorkflow::make(orderId: 1004)
     ->setPersistence($persistence)
     ->retainCompletionUntilAcknowledged()
-    ->resume(expectedRunId: $runId)
-    ->run();
+    ->run(ExecutionRequest::resume(expectedRunId: $runId));
 $report('resume() replay', $replayed);
 
-RefundWorkflow::make(orderId: 1004)->setPersistence($persistence)->acknowledgeCompletion($runId);
+RefundWorkflow::make(orderId: 1004)->setPersistence($persistence)->acknowledge($runId);
 echo "  acknowledged; files left in the store: " . \count(\glob($storage . '/*') ?: []) . "\n";

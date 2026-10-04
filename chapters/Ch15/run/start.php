@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/../../../bootstrap.php';
 
+use NeuronAI\UniqueIdGenerator;
 use NeuronAI\Workflow\Persistence\FilePersistence;
 use NeuronBook\Ch15\PublishWorkflow;
 
@@ -20,7 +21,7 @@ use NeuronBook\Ch15\PublishWorkflow;
 
 $storage = \dirname(__DIR__, 3) . '/storage/workflows';
 
-$workflow = PublishWorkflow::make()
+$workflow = PublishWorkflow::make(workflowId: UniqueIdGenerator::generateId('workflow_'))
     ->setPersistence(new FilePersistence($storage));
 
 $state = $workflow->run();

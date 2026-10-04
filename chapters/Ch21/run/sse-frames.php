@@ -24,7 +24,8 @@ use NeuronAI\Workflow\Streaming\SSEEncoder;
  * `cat -e` marks each line end with "$".
  */
 
-$agent = Agent::make();
+// An agent with no thread bound does not stream: the thread is its workflow ID.
+$agent = Agent::make()->setThreadId('sse-demo');
 $agent->setAiProvider(
     (new FakeAIProvider(new AssistantMessage('Your order ships tomorrow morning.')))->setStreamChunkSize(8)
 );

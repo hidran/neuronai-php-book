@@ -8,8 +8,8 @@ libraries. Nothing in this repository is a snippet that was never run.
 
 | Verified against | Version |
 |---|---|
-| `neuron-core/neuron-ai` | 4.x (`df30064`, shortly before 4.0.0) |
-| `neuron-core/neuron-laravel` | 2.x (`399936c`) |
+| `neuron-core/neuron-ai` | 4.0.3 |
+| `neuron-core/neuron-laravel` | 2.0.0 |
 | PHP | 8.5 (8.5.4) |
 
 PHP 8.5 is the minimum. The examples use what it added where it makes the
@@ -163,9 +163,8 @@ never turns into a red build.
 ## What verification found
 
 Verifying the book against v4 turned up defects in the printed text, in the
-framework's documentation and in the framework itself. The book is corrected;
-Appendix A lists the documentation drift. The ones worth knowing before you
-write any code:
+framework's documentation and in the framework itself. The book is corrected.
+The ones worth knowing before you write any code:
 
 - **Binding is casting.** v4 converts tool inputs to the declared property
   type before `__invoke()` runs, so `"45.07"` arrives as `45.07` and a value
@@ -176,21 +175,17 @@ write any code:
   such as `#[NotBlank]`, or an omitted key becomes an uninitialised-property
   fatal instead of a retry. See [`Ch06/Person.php`](chapters/Ch06/Person.php).
 - **A pause is a result.** `run()` returns an interrupted state; nothing is
-  thrown. Resume with `resume($payload)->run()`, addressed by workflow ID.
+  thrown. Resume with `submitInputs($payload)->run()` (or
+  `run(ExecutionRequest::resume($payload))`), addressed by workflow ID.
 - **`approvalPolicy()` takes no arguments**, whatever the docs show; the
   inputs are already bound on the tool.
-- **`SQLChatHistory` and `EloquentChatHistory` now both take `threadId`**, the
-  inconsistency the first edition tripped on.
+- **The thread belongs to the agent.** There are no `*ChatHistory` classes and
+  no `make(threadId: ...)`: bind a conversation with `setThreadId()` or
+  `for()`, and an agent with none refuses to run.
 
 Upstream defects worked around here, each with a comment pointing at it:
 
-- `StdioTransport::connect()` escapes the arguments it appends but not the
-  command itself, so any interpreter path containing a space is split by the
-  shell and the MCP server dies instantly. That is the default on macOS with
-  Laravel Herd. See [`Ch09/LocalToolsAgent.php`](chapters/Ch09/LocalToolsAgent.php).
-- The comparison validation rules build retry messages without the field name
-  and with the reference's type instead of its value.
-- The stale-attempt fence on `resume()` throws a plain `WorkflowException`,
+- The stale-attempt fence on a fenced resume throws a plain `WorkflowException`,
   not `StaleWorkflowRunException`. `tests/ApiContractTest.php` pins this so
   the day it is fixed, the build says so.
 - `subscribe()` types its listener as `callable(object): void`, so typed
@@ -204,7 +199,10 @@ One engine bug, in PHP itself rather than the framework:
   `Class::method(...)` are unaffected. `tests/BookExamplesTest.php` scans the
   repository for the unsafe form.
 
-Fixed in v4, and removed from this repository: the `FileVectorStore` crash on
+Fixed by 4.0.2, and removed from this repository: the `StdioTransport` command
+escaping that broke interpreter paths containing a space (the Laravel Herd
+default on macOS), the comparison rules whose retry messages lacked the field
+name and value, the `FileVectorStore` crash on
 a store that had never been written, and the `Action::feedback()` method that
 erased the value it was supposed to return.
 

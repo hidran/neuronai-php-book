@@ -24,6 +24,7 @@ if (!ProviderFactory::isAvailable()) {
 $prompt = $argv[1] ?? 'What PHP version is the server running?';
 
 echo LocalToolsAgent::make()
+    ->setThreadId('mcp-demo')
     ->chat(new UserMessage($prompt))
     ->getMessage()
     ?->getContent() . PHP_EOL;

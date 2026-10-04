@@ -20,6 +20,8 @@ if (!ProviderFactory::isAvailable()) {
 
 $prompt = $argv[1] ?? 'Explain the difference between readonly and final in PHP 8, in three lines.';
 
-$state = AssistantAgent::make()->chat(new UserMessage($prompt));
+$state = AssistantAgent::make()
+    ->setThreadId('demo')
+    ->chat(new UserMessage($prompt));
 
 echo $state->getMessage()?->getContent() . PHP_EOL;

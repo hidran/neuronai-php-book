@@ -41,25 +41,15 @@ class LocalToolsAgent extends Agent
         return [
             ...McpConnector::make([
                 /*
-                 * escapeshellarg() on the command is not optional.
-                 *
-                 * StdioTransport::connect() builds its command line as
-                 *
-                 *     $commandLine = $command;
-                 *     foreach ($args as $arg) {
-                 *         $commandLine .= ' ' . escapeshellarg((string) $arg);
-                 *     }
-                 *
-                 * The *arguments* are escaped; the *command* is not. Any
-                 * interpreter path containing a space is therefore split by the
-                 * shell and the process dies instantly, surfacing only as
-                 * "MCP server process has terminated unexpectedly."
-                 *
-                 * That is the default on macOS with Laravel Herd, whose PHP
-                 * lives under "~/Library/Application Support/...". Still true
-                 * in neuron-ai 4.x.
+                 * Pass the command as it is. Up to 4.0.1, StdioTransport
+                 * escaped the arguments but not the command, so a path with a
+                 * space (Laravel Herd on macOS) was split by the shell and the
+                 * server died; a book-side escapeshellarg() was the workaround.
+                 * Since 4.0.2 the server starts without a shell, and an
+                 * escaped command now fails with "Failed to start the MCP
+                 * server".
                  */
-                'command' => \escapeshellarg(PHP_BINARY),
+                'command' => PHP_BINARY,
                 'args' => [__DIR__ . '/server/mcp-server.php'],
             ])->tools(),
         ];

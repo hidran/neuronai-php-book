@@ -5,7 +5,7 @@ declare(strict_types=1);
 require __DIR__ . '/../../../bootstrap.php';
 
 use NeuronAI\Agent\Agent;
-use NeuronAI\Chat\History\FileChatHistory;
+use NeuronAI\Chat\History\FileMessageStore;
 use NeuronAI\Chat\Messages\AssistantMessage;
 use NeuronAI\Chat\Messages\ToolCallMessage;
 use NeuronAI\Chat\Messages\UserMessage;
@@ -23,9 +23,9 @@ use NeuronBook\Ch22\IssueRefundTool;
  *
  * No model needed: the fake provider scripts the model asking for a refund,
  * then answering once the tool has run. Every "request" below builds a fresh
- * agent from the thread ID alone, with the same durable persistence and chat
- * history - FilePersistence and FileChatHistory standing in for
- * EloquentPersistence(WorkflowStore::class) and EloquentChatHistory.
+ * agent from the thread ID alone, with the same durable persistence and
+ * message store - FilePersistence and FileMessageStore standing in for
+ * EloquentPersistence(WorkflowStore::class) and EloquentMessageStore.
  */
 
 $storage = \dirname(__DIR__, 3) . '/storage/workflows/ch22-agent';
@@ -42,9 +42,10 @@ $provider = new FakeAIProvider(
 );
 
 $agentFor = static function (string $threadId) use ($storage, $issued, $provider): Agent {
-    $agent = Agent::make(threadId: $threadId)
+    $agent = Agent::make()
+        ->setThreadId($threadId)
         ->setPersistence(new FilePersistence($storage))
-        ->setChatHistory(new FileChatHistory($storage));
+        ->setMessageStore(new FileMessageStore($storage));
     $agent->addTool(new IssueRefundTool($issued));
     $agent->setAiProvider($provider);
 

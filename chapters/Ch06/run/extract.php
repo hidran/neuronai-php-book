@@ -22,7 +22,7 @@ if (!ProviderFactory::isAvailable()) {
 
 $text = $argv[1] ?? "I'm John and I want a pizza delivered to 12 James Street, 00560 Rome.";
 
-$person = ExtractorAgent::make()->structured(
+$person = ExtractorAgent::make()->setThreadId('extract-demo')->structured(
     messages: new UserMessage($text),
     class: Person::class,
     maxRetries: 3,

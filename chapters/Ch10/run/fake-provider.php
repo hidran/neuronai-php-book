@@ -34,6 +34,7 @@ $provider = new FakeAIProvider(
 $calls = new ArrayObject();
 
 $state = Agent::make()
+    ->setThreadId('fake-provider-demo')
     ->setAiProvider($provider)
     ->addTool(new RecordingWeatherTool($calls))
     ->chat(new UserMessage('What is the weather in Turin?'));

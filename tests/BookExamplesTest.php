@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace NeuronBook\Tests;
 
 use InvalidArgumentException;
-use NeuronAI\Chat\History\InMemoryChatHistory;
+use NeuronAI\Exceptions\AgentException;
+use NeuronAI\Chat\Messages\AssistantMessage;
+use NeuronAI\Chat\Messages\UserMessage;
+use NeuronAI\Testing\FakeAIProvider;
 use NeuronBook\Ch03\AssistantAgent;
 use NeuronBook\Ch14\ContentWorkflowState;
 use NeuronBook\Ch22\RefundApprovalRequest;
@@ -22,30 +25,49 @@ use SplFileInfo;
 final class BookExamplesTest extends TestCase
 {
     /**
-     * Section 4.3. InMemoryChatHistory keys itself at random when it is given
-     * no thread, so a chatHistory() hook that omits $this->threadId makes
-     * make(threadId: ...) throw "Conflicting thread identity". The AG-UI
-     * endpoint in Section 7.5 is exactly that call.
+     * Section 4.3. The thread belongs to the agent, bound with setThreadId()
+     * or for(); make(threadId: ...) no longer exists.
      */
     public function testAssistantAgentAcceptsAThreadId(): void
     {
-        $agent = AssistantAgent::make(threadId: 'thread-1');
+        $agent = AssistantAgent::make()->setThreadId('thread-1');
 
-        self::assertSame('thread-1', $agent->getChatHistory()->getThreadId());
-    }
-
-    public function testAssistantAgentStillWorksWithoutAThreadId(): void
-    {
-        self::assertNotNull(AssistantAgent::make()->getChatHistory()->getThreadId());
+        self::assertSame('thread-1', $agent->getThreadId());
+        self::assertSame('thread-2', AssistantAgent::make()->for('thread-2')->getThreadId());
     }
 
     /**
-     * Pins the framework behaviour Section 4.3 describes. If this fails,
-     * upstream stopped pre-binding the key: revisit that paragraph.
+     * Pins the framework behaviour Section 4.3 and 26.14 describe: nothing
+     * invents a thread, and a run without one is an AgentException. If this
+     * fails, upstream started inventing IDs: revisit those paragraphs.
      */
-    public function testInMemoryHistoryPreBindsARandomKey(): void
+    public function testAnAgentWithNoThreadRefusesToRun(): void
     {
-        self::assertStringStartsWith('mem_', (string) (new InMemoryChatHistory())->getThreadId());
+        $agent = new class () extends \NeuronAI\Agent\Agent {
+            protected function provider(): \NeuronAI\Providers\AIProviderInterface
+            {
+                return new FakeAIProvider(new AssistantMessage('unused'));
+            }
+        };
+
+        self::assertNull($agent->getThreadId());
+        $this->expectException(AgentException::class);
+        $this->expectExceptionMessage('no thread ID');
+        $agent->chat(new UserMessage('hello'));
+    }
+
+    public function testABoundThreadRunsOnAFakeProvider(): void
+    {
+        $agent = new class () extends \NeuronAI\Agent\Agent {
+            protected function provider(): \NeuronAI\Providers\AIProviderInterface
+            {
+                return new FakeAIProvider(new AssistantMessage('hello back'));
+            }
+        };
+
+        $reply = $agent->setThreadId('t-1')->chat(new UserMessage('hello'))->getMessage();
+
+        self::assertSame('hello back', $reply->getContent());
     }
 
     /**

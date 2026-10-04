@@ -8,8 +8,8 @@ use NeuronAI\Agent\Agent;
 use NeuronAI\Chat\Messages\AssistantMessage;
 use NeuronAI\Chat\Messages\Usage;
 use NeuronAI\Chat\Messages\UserMessage;
-use NeuronAI\Observability\Events\InferenceStop;
-use NeuronAI\Observability\Events\WorkflowEnd;
+use NeuronAI\Agent\Observability\InferenceStop;
+use NeuronAI\Workflow\Observability\WorkflowEnd;
 use NeuronAI\Testing\FakeAIProvider;
 use NeuronBook\Ch23\UsageRecorder;
 
@@ -29,7 +29,7 @@ $provider = new FakeAIProvider(
     (new AssistantMessage('Yes, the refund was issued.'))->setUsage(new Usage(1240, 29, cachedInputTokens: 800)),
 );
 
-$agent = Agent::make();
+$agent = Agent::make()->setThreadId('usage-demo');
 $agent->setAiProvider($provider);
 
 $rows = [];

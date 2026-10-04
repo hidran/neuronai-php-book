@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace NeuronBook\Tests;
 
 use NeuronAI\Chat\Enums\SourceType;
-use NeuronAI\Chat\History\EloquentChatHistory;
-use NeuronAI\Chat\History\SQLChatHistory;
+use NeuronAI\Chat\History\EloquentMessageStore;
+use NeuronAI\Chat\History\FileMessageStore;
+use NeuronAI\Chat\History\InMemoryMessageStore;
+use NeuronAI\Chat\History\SQLMessageStore;
 use NeuronAI\Chat\Messages\ContentBlocks\FileContent;
 use NeuronAI\Evaluation\Assertions\Judges\FaithfulnessJudge;
 use NeuronAI\Evaluation\Output\ConsoleOutput;
@@ -94,13 +96,14 @@ final class ApiContractTest extends TestCase
     }
 
     /**
-     * v3 used thread_id for SQLChatHistory and threadId for Eloquent; v4
-     * settled on threadId for both, and the book now relies on that.
+     * v4 has no *ChatHistory classes and no thread ID on the store: the thread
+     * is bound on the agent, and a message store only says where messages live.
      */
-    public function testChatHistoriesAgreeOnThreadId(): void
+    public function testMessageStoreConstructors(): void
     {
-        self::assertContains('threadId', self::parameterNames(EloquentChatHistory::class));
-        self::assertContains('threadId', self::parameterNames(SQLChatHistory::class));
+        self::assertSame([], self::parameterNames(InMemoryMessageStore::class));
+        self::assertSame(['directory', 'prefix', 'ext'], self::parameterNames(FileMessageStore::class));
+        self::assertSame(['modelClass'], self::parameterNames(EloquentMessageStore::class));
     }
 
     /**
@@ -204,17 +207,17 @@ final class ApiContractTest extends TestCase
     {
         $rc = new ReflectionClass(\NeuronAI\Agent\Agent::class);
 
-        foreach (['pendingApprovals', 'submitApprovalDecisions', 'resetConversation', 'abandonRun', 'getThreadId'] as $method) {
+        foreach (['pendingApprovals', 'submitApprovalDecisions', 'resetConversation', 'abandon', 'setThreadId', 'getThreadId'] as $method) {
             self::assertTrue($rc->hasMethod($method), "Agent::{$method}() is gone.");
         }
     }
 
     /**
-     * Chapter 4.3: v4 settled on (pdo, threadId) - the v3 book had thread_id first.
+     * Chapter 4.3: the SQL store is (pdo, table) - the thread is the agent's.
      */
-    public function testSqlChatHistoryArgumentOrder(): void
+    public function testSqlMessageStoreArgumentOrder(): void
     {
-        self::assertSame(['pdo', 'threadId', 'table', 'contextWindow'], self::parameterNames(SQLChatHistory::class));
+        self::assertSame(['pdo', 'table'], self::parameterNames(SQLMessageStore::class));
     }
 
     /**
@@ -224,7 +227,10 @@ final class ApiContractTest extends TestCase
     {
         self::assertSame(['workflowId', 'state'], self::parameterNames(\NeuronAI\Workflow\Workflow::class));
 
-        $resume = (new ReflectionClass(\NeuronAI\Workflow\Workflow::class))->getMethod('resume');
+        // v4 has no Workflow::resume(): continuing is run(ExecutionRequest::resume(...)) or submitInputs()->run().
+        self::assertFalse((new ReflectionClass(\NeuronAI\Workflow\Workflow::class))->hasMethod('resume'));
+
+        $resume = (new ReflectionClass(\NeuronAI\Workflow\Executor\ExecutionRequest::class))->getMethod('resume');
         $names = array_map(static fn (\ReflectionParameter $p): string => $p->getName(), $resume->getParameters());
 
         self::assertContains('expectedRunId', $names);
@@ -246,14 +252,14 @@ final class ApiContractTest extends TestCase
     }
 
     /**
-     * Appendix A item 74 / Section 22.3 document that the stale-attempt fence
+     * Section 22.3 documents that the stale-attempt fence
      * throws a plain WorkflowException. When this starts failing, upstream has
-     * aligned the two fences: update the callout in 22.3 and the appendix.
+     * aligned the two fences: update the callout in 22.3.
      */
     public function testStaleAttemptFenceStillThrowsPlainWorkflowException(): void
     {
         $source = (string) file_get_contents(
-            (string) (new ReflectionClass(\NeuronAI\Workflow\Executor\WorkflowExecutor::class))->getFileName(),
+            (string) (new ReflectionClass(\NeuronAI\Workflow\WorkflowEngine::class))->getFileName(),
         );
 
         self::assertStringContainsString("Stale continuation for workflow ID", $source);

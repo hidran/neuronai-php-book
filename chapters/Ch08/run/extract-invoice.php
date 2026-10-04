@@ -51,7 +51,7 @@ $message->addContent(
     )
 );
 
-$invoice = InvoiceAgent::make()->structured(
+$invoice = InvoiceAgent::make()->setThreadId('invoice-demo')->structured(
     messages: $message,
     maxRetries: 2,
 );

@@ -21,6 +21,7 @@ if (!ProviderFactory::isAvailable()) {
 $question = $argv[1] ?? 'Is the server under stress right now?';
 
 echo ToolDemoAgent::make()
+    ->setThreadId('server-load-demo')
     ->chat(new UserMessage($question))
     ->getMessage()
     ?->getContent() . PHP_EOL;

@@ -8,7 +8,7 @@ use NeuronAI\Agent\Agent;
 use NeuronAI\Chat\Messages\AssistantMessage;
 use NeuronAI\Chat\Messages\ToolCallMessage;
 use NeuronAI\Chat\Messages\UserMessage;
-use NeuronAI\Observability\Events\ToolCalled;
+use NeuronAI\Agent\Observability\ToolCalled;
 use NeuronAI\Observability\LogListener;
 use NeuronAI\Observability\ObservabilityEvent;
 use NeuronAI\Testing\FakeAIProvider;
@@ -27,7 +27,7 @@ use Psr\Log\AbstractLogger;
  * ToolCalled shows that a listener can key on a single event class.
  *
  * The two ignores are for the framework, not for this code: in neuron-ai
- * 4.x-dev, WorkflowInterface::subscribe() documents its listener as
+ * 4.0.3, WorkflowInterface::subscribe() documents its listener as
  * callable(object): void, which no typed listener - including the
  * framework's own LogListener - can satisfy at PHPStan level 8. The calls are
  * exactly the ones src/Observability/AGENTS.md prescribes, and they run.
@@ -49,6 +49,7 @@ $provider = new FakeAIProvider(
 
 $agent = Agent::make()
     ->setAiProvider($provider)
+    ->setThreadId('listeners-demo')
     ->addTool(new RecordingWeatherTool(new ArrayObject()))
     ->subscribe(ObservabilityEvent::class, new LogListener($logger)) // @phpstan-ignore argument.type
     ->subscribe(ToolCalled::class, function (ToolCalled $event): void { // @phpstan-ignore argument.type

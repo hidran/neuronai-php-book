@@ -18,10 +18,11 @@ use NeuronBook\Ch13\NodeTwo;
  * that most of the interesting nodes call an LLM is incidental to the machinery.
  *
  * run() is called on the workflow itself and returns the final WorkflowState.
- * There is no handler object and no init() step in between.
+ * There is no handler object and no init() step in between. The workflow ID
+ * must be bound before the run: the framework never makes one up.
  */
 
-$state = Workflow::make()
+$state = Workflow::make(workflowId: 'demo')
     ->addNodes([
         new InitialNode(),
         new NodeOne(),

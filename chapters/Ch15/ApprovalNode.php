@@ -7,7 +7,7 @@ namespace NeuronBook\Ch15;
 use NeuronAI\Agent\Interrupt\ApprovalRequest;
 use NeuronAI\Workflow\Events\StartEvent;
 use NeuronAI\Workflow\Events\StopEvent;
-use NeuronAI\Workflow\Interrupt\Action;
+use NeuronAI\Agent\Interrupt\Action;
 use NeuronAI\Workflow\Node;
 use NeuronAI\Workflow\WorkflowState;
 
@@ -23,8 +23,8 @@ use NeuronAI\Workflow\WorkflowState;
  * that safe: the closure's result is persisted, so the resumed node gets the
  * stored value instead of re-running the closure (Section 15.5).
  *
- * ApprovalRequest lives in NeuronAI\Agent\Interrupt; Action stays in
- * NeuronAI\Workflow\Interrupt. Action is a read-only outbound value object:
+ * ApprovalRequest and Action both live in NeuronAI\Agent\Interrupt. Action is
+ * a read-only outbound value object:
  * the decision comes back as a plain array, never by mutating the Action.
  */
 class ApprovalNode extends Node

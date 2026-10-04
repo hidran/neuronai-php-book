@@ -16,7 +16,7 @@ number to raise.
 ## The three methods that matter
 
 `provider()` returns the model. `instructions()` returns the system prompt.
-`chatHistory()` returns the conversation store. Everything else is optional.
+`messageStore()` returns the conversation store (and `contextWindow()` its token budget). Everything else is optional.
 
 ## Context window
 

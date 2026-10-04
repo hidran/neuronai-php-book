@@ -21,7 +21,7 @@ if (!ProviderFactory::isAvailable()) {
 }
 
 $threadId = $argv[1] ?? 'default';
-$agent = PersistentAgent::make(threadId: $threadId);
+$agent = PersistentAgent::make(workflowId: $threadId);
 
 echo "Thread: {$threadId} — /exit to quit, /reset to clear memory.\n\n";
 

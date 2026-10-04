@@ -13,7 +13,7 @@ use NeuronAI\Workflow\WorkflowState;
  *
  * interruptIf() returns null in two situations, told apart by the condition:
  * the amount was under the threshold (nobody was asked), or the deadline
- * passed and an inputless resume()->run() delivered no answer. The node never
+ * passed and an inputless run(ExecutionRequest::resume()) delivered no answer. The node never
  * compares clocks: the workflow validated the persisted deadline before
  * re-entering it.
  */

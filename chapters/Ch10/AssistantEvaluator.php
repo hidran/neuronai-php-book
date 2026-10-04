@@ -59,7 +59,7 @@ class AssistantEvaluator extends BaseEvaluator
     {
         \assert(\is_string($datasetItem['question']));
 
-        $state = AssistantAgent::make()->chat(new UserMessage($datasetItem['question']));
+        $state = AssistantAgent::make()->setThreadId('evaluator-' . \uniqid())->chat(new UserMessage($datasetItem['question']));
 
         return $state->getMessage()?->getContent() ?? '';
     }

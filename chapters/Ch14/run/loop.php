@@ -15,11 +15,11 @@ use NeuronBook\Ch14\WriteNode;
  *   php chapters/Ch14/run/loop.php
  *
  * The Workflow constructor is (?string $workflowId, ?WorkflowState $state), so
- * a custom state goes in by name: Workflow::make(state: ...). A Workflow
- * subclass can instead return it from its state() hook.
+ * a custom state goes in by name: Workflow::make(workflowId: ..., state: ...). A
+ * Workflow subclass can instead return it from its state() hook.
  */
 
-$state = Workflow::make(state: new ContentWorkflowState())
+$state = Workflow::make(workflowId: 'demo', state: new ContentWorkflowState())
     ->addNodes([
         new WriteNode(),
         new ReviewNode(),

@@ -6,17 +6,17 @@ namespace NeuronBook\Ch04;
 
 use NeuronAI\Agent\Agent;
 use NeuronAI\Agent\SystemPrompt;
-use NeuronAI\Chat\History\ChatHistoryInterface;
-use NeuronAI\Chat\History\FileChatHistory;
+use NeuronAI\Chat\History\FileMessageStore;
+use NeuronAI\Chat\History\MessageStoreInterface;
 use NeuronAI\Providers\AIProviderInterface;
 use NeuronBook\Support\ProviderFactory;
 
 /**
  * Lab 2 - an agent whose conversation survives a process restart.
  *
- * The history is built without a thread ID. Identity enters once, through
- * PersistentAgent::make(threadId: ...), and the agent binds it into the
- * history before first use.
+ * The store is built without a thread ID. Identity enters once, through
+ * PersistentAgent::make(workflowId: ...) (or setThreadId()), and the agent
+ * opens the store's history for that thread.
  */
 class PersistentAgent extends Agent
 {
@@ -33,11 +33,15 @@ class PersistentAgent extends Agent
         );
     }
 
-    protected function chatHistory(): ChatHistoryInterface
+    protected function messageStore(): MessageStoreInterface
     {
-        return new FileChatHistory(
+        return new FileMessageStore(
             directory: \dirname(__DIR__, 2) . '/storage/chat',
-            contextWindow: ProviderFactory::contextWindow(),
         );
+    }
+
+    protected function contextWindow(): int
+    {
+        return ProviderFactory::contextWindow();
     }
 }

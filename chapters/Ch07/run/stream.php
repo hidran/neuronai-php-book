@@ -28,7 +28,7 @@ $prompt = $argv[1] ?? 'Explain the Repository pattern and when using it is a mis
 $start = \microtime(true);
 $first = null;
 
-$stream = AssistantAgent::make()->stream(new UserMessage($prompt));
+$stream = AssistantAgent::make()->setThreadId('stream-demo')->stream(new UserMessage($prompt));
 
 // No adapter and no channel attached, so stream() returned a Generator.
 \assert($stream instanceof Generator);

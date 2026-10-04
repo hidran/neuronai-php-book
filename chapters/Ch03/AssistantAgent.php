@@ -6,8 +6,6 @@ namespace NeuronBook\Ch03;
 
 use NeuronAI\Agent\Agent;
 use NeuronAI\Agent\SystemPrompt;
-use NeuronAI\Chat\History\ChatHistoryInterface;
-use NeuronAI\Chat\History\InMemoryChatHistory;
 use NeuronAI\Providers\AIProviderInterface;
 use NeuronBook\Support\ProviderFactory;
 
@@ -15,7 +13,7 @@ use NeuronBook\Support\ProviderFactory;
  * The book's first agent - Chapter 3, "Your First Agent".
  *
  * Three methods carry the whole thing: provider() says which model,
- * instructions() says what the agent is, chatHistory() says how much of the
+ * instructions() says what the agent is, contextWindow() says how much of the
  * conversation it keeps. Everything in Parts II to V is an elaboration of
  * this shape.
  */
@@ -46,13 +44,11 @@ class AssistantAgent extends Agent
         );
     }
 
-    protected function chatHistory(): ChatHistoryInterface
+    protected function contextWindow(): int
     {
-        // Pass the agent's thread: an InMemoryChatHistory built without one
-        // keys itself at random, which then conflicts with make(threadId: ...).
-        return new InMemoryChatHistory(
-            threadId: $this->threadId,
-            contextWindow: ProviderFactory::contextWindow(),
-        );
+        // No messageStore() is declared, so the conversation lives in the
+        // default InMemoryMessageStore: as long as this instance. The thread
+        // is bound by the caller (setThreadId() / for()), never by the class.
+        return ProviderFactory::contextWindow();
     }
 }

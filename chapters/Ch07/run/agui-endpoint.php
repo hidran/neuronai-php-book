@@ -50,7 +50,7 @@ foreach ($adapter->getHeaders() as $name => $value) {
 // With an adapter attached the generator yields ProtocolEvent objects;
 // stream()'s declared type only promises "object", so say it here.
 /** @var Generator<int, ProtocolEvent, mixed, AgentState> $stream */
-$stream = AssistantAgent::make(threadId: $input['threadId'])
+$stream = AssistantAgent::make(workflowId: $input['threadId'])
     ->setStreamAdapter($adapter)
     ->stream(new UserMessage((string) $last['content']));
 

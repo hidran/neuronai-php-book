@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace NeuronBook\Ch23;
 
 use Closure;
-use NeuronAI\Observability\Events\InferenceStop;
+use NeuronAI\Agent\Observability\InferenceStop;
 
 /**
  * Section 23.1 - one usage record per inference, from a PSR-14 listener.

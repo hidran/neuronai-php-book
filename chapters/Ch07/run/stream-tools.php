@@ -26,6 +26,7 @@ if (!ProviderFactory::isAvailable()) {
 }
 
 $stream = AssistantAgent::make()
+    ->setThreadId('stream-tools-demo')
     ->addTool(new ServerConfigurationTool())
     ->stream(
         new UserMessage("What's the IP address of the server?")
