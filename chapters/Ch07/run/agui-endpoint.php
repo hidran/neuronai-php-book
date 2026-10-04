@@ -36,14 +36,16 @@ if (($last['role'] ?? null) !== 'user') {
     exit('A new turn must end with a user message.');
 }
 
-$adapter = new AGUIAdapter(
+// setStreamAdapter() takes a factory: an adapter holds the state of one stream,
+// and the agent builds a fresh one for each execution segment.
+$makeAdapter = static fn (): AGUIAdapter => new AGUIAdapter(
     threadId: $input['threadId'],
     runId: $input['runId'] ?? null,
     messages: $messages,
     state: $input['state'] ?? [],
 );
 
-foreach ($adapter->getHeaders() as $name => $value) {
+foreach ($makeAdapter()->getHeaders() as $name => $value) {
     \header("{$name}: {$value}");
 }
 
@@ -51,7 +53,7 @@ foreach ($adapter->getHeaders() as $name => $value) {
 // stream()'s declared type only promises "object", so say it here.
 /** @var Generator<int, ProtocolEvent, mixed, AgentState> $stream */
 $stream = AssistantAgent::make(workflowId: $input['threadId'])
-    ->setStreamAdapter($adapter)
+    ->setStreamAdapter($makeAdapter)
     ->stream(new UserMessage((string) $last['content']));
 
 foreach (SSEEncoder::encode($stream) as $line) {
